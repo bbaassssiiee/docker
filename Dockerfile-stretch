@@ -1,10 +1,7 @@
-FROM ibmjava:8-sdk
-RUN apt-get update \
-  && apt-get install -y software-properties-common git python python-dev python-virtualenv python-cryptography curl unzip \
-  && rm -rf /var/lib/apt/lists/*
-RUN apt-add-repository ppa:ansible/ansible \
-  && apt update \
-  && apt install -y ansible
+FROM openjdk:8-jdk-stretch
+
+RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
+
 ARG user=jenkins
 ARG group=jenkins
 ARG uid=1000
@@ -27,10 +24,7 @@ RUN mkdir -p $JENKINS_HOME \
 # Jenkins home directory is a volume, so configuration and build history
 # can be persisted and survive image upgrades
 VOLUME $JENKINS_HOME
-COPY get-pip.py ${JENKINS_HOME}/get-pip.py
-RUN python ${JENKINS_HOME}/get-pip.py
-COPY requirements.txt ${JENKINS_HOME}/requirements.txt
-RUN pip install -r ${JENKINS_HOME}/requirements.txt
+
 # `/usr/share/jenkins/ref/` contains all reference configuration we want
 # to set on a fresh new installation. Use it to bundle additional plugins
 # or config file with your custom jenkins Docker image.
@@ -50,10 +44,10 @@ COPY init.groovy /usr/share/jenkins/ref/init.groovy.d/tcp-slave-agent-port.groov
 
 # jenkins version being bundled in this docker image
 ARG JENKINS_VERSION
-ENV JENKINS_VERSION ${JENKINS_VERSION:-2.150.1}
+ENV JENKINS_VERSION ${JENKINS_VERSION:-2.121.1}
 
 # jenkins.war checksum, download will be validated using it
-ARG JENKINS_SHA=7a38586d5a3a1a83498809a83715728bb2f01b58a7dd3a88366f076efdaf6669
+ARG JENKINS_SHA=5bb075b81a3929ceada4e960049e37df5f15a1e3cfc9dc24d749858e70b48919
 
 # Can be used to customize where jenkins.war get downloaded from
 ARG JENKINS_URL=https://repo.jenkins-ci.org/public/org/jenkins-ci/main/jenkins-war/${JENKINS_VERSION}/jenkins-war-${JENKINS_VERSION}.war
@@ -84,7 +78,5 @@ COPY tini-shim.sh /bin/tini
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/jenkins.sh"]
 
 # from a derived Dockerfile, can use `RUN plugins.sh active.txt` to setup /usr/share/jenkins/ref/plugins from a support bundle
-COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
 COPY plugins.sh /usr/local/bin/plugins.sh
 COPY install-plugins.sh /usr/local/bin/install-plugins.sh
-RUN /usr/local/bin/install-plugins.sh < /usr/share/jenkins/ref/plugins.txt
